@@ -1,3 +1,30 @@
+def parse_vscode_extension_info(raw_info: str):
+    """从原始文本中解析VS Code扩展信息
+
+    Args:
+        raw_info: 包含identifier和version的原始文本
+    Returns:
+        标识符和版本号
+    Raises:
+        ValueError: 当标识符或版本号缺失时
+    """
+    lines = [line.strip() for line in raw_info.strip().splitlines() if line.strip()]
+    info_dict = dict(zip(map(str.lower, lines[::2]), lines[1::2]))
+
+    try:
+        identifier = info_dict['identifier']
+    except KeyError:
+        raise ValueError("未找到标识符")
+
+    try:
+        version = info_dict['version']
+    except KeyError:
+        raise ValueError("未找到版本号")
+
+    return identifier, version
+
+
+
 def generate_vscode_extension_url(raw_info: str, platform=None) -> str:
     """从原始文本生成VS Code扩展下载链接
 
@@ -6,47 +33,24 @@ def generate_vscode_extension_url(raw_info: str, platform=None) -> str:
         platform: 平台信息
     Returns:
         下载URL
-        platform: 平台信息
     Raises:
         ValueError: 当标识符格式错误或输入数据格式错误时
     """
-    # 解析输入文本
-    info_dict = dict(
-        zip(
-            map(str.lower, raw_info.strip().split('\n')[::2]),
-            raw_info.strip().split('\n')[1::2]
-        )
-    )
+    identifier, version = parse_vscode_extension_info(raw_info)
 
-    # 解析标识符
     try:
-        publisher, name = info_dict['identifier'].split('.')
-    except (KeyError, ValueError):
+        publisher, name = identifier.split('.')
+    except ValueError:
         raise ValueError("标识符格式错误，应为 'Publisher.Name'")
 
-    # 获取版本号
-    try:
-        version = info_dict['version']
-    except KeyError:
-        raise ValueError("未找到版本号")
-
-    # 生成下载URL
     base_url = "https://marketplace.visualstudio.com/_apis/public/gallery"
     download_url = f"{base_url}/publishers/{publisher}/vsextensions/{name}/{version}/vspackage"
 
-    # 添加平台信息（如果指定了）
-    # win32-x64: Windows 64-bit
-    # win32-ia32: Windows 32-bit
-    # win32-arm64: Windows ARM64
-    # darwin-x64: macOS Intel
-    # darwin-arm64: macOS Apple Silicon
-    # linux-x64: Linux 64-bit
-    # linux-arm64: Linux ARM64
-    # alpine-x64: Alpine Linux
     if platform:
         download_url += f"?targetPlatform={platform}"
 
     return download_url
+
 
 
 def main():
